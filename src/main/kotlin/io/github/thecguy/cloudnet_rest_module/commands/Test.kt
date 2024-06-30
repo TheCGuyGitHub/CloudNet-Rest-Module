@@ -11,8 +11,7 @@ import eu.cloudnetservice.driver.service.ServiceTask
 import eu.cloudnetservice.driver.database.DatabaseProvider
 import eu.cloudnetservice.node.command.annotation.Description
 import eu.cloudnetservice.node.command.source.CommandSource
-import eu.cloudnetservice.driver.document.Document
-import eu.cloudnetservice.driver.document.DocumentFactory
+
 import jakarta.inject.Singleton
 import java.util.*
 
@@ -27,13 +26,14 @@ class Test {
 
 
 
+
     @Suggestions("test")
-    fun suggestion(`$`: CommandContext<*>?, input: String?): List<ServiceTask> {
+    fun suggestion(context: CommandContext<*>, input: String?): List<ServiceTask> {
         return taskProvider.serviceTasks().toList()
     }
 
     @Parser(name = "test", suggestions = "test")
-    fun parser(`$`: CommandContext<*>?, input: Queue<String?>): List<ServiceTask> {
+    fun parser(context: CommandContext<*>, input: Queue<String?>): List<ServiceTask> {
         return taskProvider.serviceTasks().toList()
     }
 
@@ -56,7 +56,7 @@ class Test {
     fun insert(
         source: CommandSource,
     ) {
-        databaseProvider.database("test").insert("test", Document.newDocument(DocumentFactory.json()))
+        println("test")
     }
 
 

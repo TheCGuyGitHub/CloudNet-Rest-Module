@@ -38,6 +38,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
     implementation("com.google.code.gson:gson:2.8.9")
 
+    implementation("com.zaxxer:HikariCP:5.1.0")
+
 }
 
 
@@ -64,7 +66,7 @@ kotlin {
 moduleJson {
     name = "CloudNet-Rest-Module"
     author = "TheCGuy"
-    main = "io.github.thecguy.cloudnet_rest_module.CloudNet-Rest-Module"
+    main = "io.github.thecguy.cloudnet_rest_module.CloudNet_Rest_Module"
     description = "This CloudNet Module enables a Rest API!"
 }
 
