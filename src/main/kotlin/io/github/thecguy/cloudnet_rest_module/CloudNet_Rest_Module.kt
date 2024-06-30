@@ -15,19 +15,17 @@ import eu.cloudnetservice.driver.module.driver.DriverModule
 import eu.cloudnetservice.node.ShutdownHandler
 import eu.cloudnetservice.node.command.CommandProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
-import io.github.thecguy.cloudnet_rest_module.commands.Test
+import io.github.thecguy.cloudnet_rest_module.commands.rest
 import io.github.thecguy.cloudnet_rest_module.config.Configuration
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.swagger.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import jakarta.inject.Named
 import jakarta.inject.Singleton
 import kong.unirest.core.json.JSONArray
 import kong.unirest.core.json.JSONObject
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.NotNull
@@ -119,7 +117,7 @@ class CloudNet_Rest_Module : DriverModule() {
 
     @ModuleTask(lifecycle = ModuleLifeCycle.STARTED)
     fun start(commandProvider: CommandProvider) {
-        commandProvider.register(Test::class.java)
+        commandProvider.register(rest::class.java)
     }
 
 

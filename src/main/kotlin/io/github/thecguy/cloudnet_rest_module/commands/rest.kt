@@ -19,7 +19,7 @@ import java.util.*
 @Singleton
 @CommandPermission("thecguy.test")
 @Description("test")
-class Test {
+class rest {
 
     private val taskProvider: ServiceTaskProvider = InjectionLayer.ext().instance(ServiceTaskProvider::class.java)
     private val databaseProvider: DatabaseProvider = InjectionLayer.ext().instance(DatabaseProvider::class.java)
