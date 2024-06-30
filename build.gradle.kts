@@ -39,9 +39,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.9")
 
 }
-tasks.withType<Jar> {
-    destinationDirectory = File("D:\\Christian\\DEV\\LocalWerk\\modules")
-}
+
 
 tasks {
     compileJava {

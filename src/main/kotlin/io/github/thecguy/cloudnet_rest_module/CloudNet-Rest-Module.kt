@@ -22,7 +22,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.NotNull
 
-
 @Singleton
 class `CloudNet-Rest-Module` : DriverModule() {
 
@@ -51,16 +50,28 @@ class `CloudNet-Rest-Module` : DriverModule() {
     }
 
 
-
-
-
-    private fun json(cloudServiceManager: CloudServiceManager): JSONObject {
+    fun services(cloudServiceManager: CloudServiceManager): JSONObject {
         val ser = cloudServiceManager.services()
-        val thing = JSONObject()
-        thing.put("", 2)
+        val servicesArray = JSONArray()
 
+        ser.forEach { service ->
+            val serviceObject = JSONObject()
+            serviceObject.put("Name", service.name())
+            val addressObject = JSONObject()
+            addressObject.put("host", service.address().host)
+            addressObject.put("port", service.address().port)
+            serviceObject.put("Address", addressObject)
+            serviceObject.put("Connected", service.connected())
+            serviceObject.put("LifeCycle", service.lifeCycle())
+            serviceObject.put("CreationTime", service.creationTime())
+            serviceObject.put("ConnectedTime", service.connectedTime())
+            servicesArray.put(serviceObject)
+        }
 
-        return thing
+        val result = JSONObject()
+        result.put("services", servicesArray)
+
+        return result
     }
 
     private fun main(@NotNull cloudServiceManager: CloudServiceManager,
@@ -84,15 +95,12 @@ class `CloudNet-Rest-Module` : DriverModule() {
                     call.respondText("Welcome to my Rest API!")
                 }
                 get("/services") {
-                    val services = cloudServiceManager.services()
-
-                    val jsonObject = serviceInfoSnapshot.toJson()
-                    println(jsonObject.toString(4))
-
-
-
-                    //val json = json(cloudServiceManager)
-                    //println(json.toString())
+                    val services = services(cloudServiceManager)
+                    call.respondText(
+                        services.toString(4)
+                            .replace("[", "")
+                            .replace("]", "")
+                    )
                 }
 
                 get("/services/{service}") {
