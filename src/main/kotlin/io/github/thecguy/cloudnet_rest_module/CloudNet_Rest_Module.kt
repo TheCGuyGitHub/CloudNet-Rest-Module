@@ -27,6 +27,7 @@ import jakarta.inject.Named
 import jakarta.inject.Singleton
 import kong.unirest.core.json.JSONArray
 import kong.unirest.core.json.JSONObject
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.NotNull
@@ -42,21 +43,6 @@ class CloudNet_Rest_Module : DriverModule() {
 
 
 
-
-
-
-    @ModuleTask(lifecycle = ModuleLifeCycle.STARTED)
-    fun started(
-        @NotNull cloudServiceManager: CloudServiceManager,
-        @NotNull shutdownHandler: ShutdownHandler,
-        @NotNull @Named("module") injectionLayer: InjectionLayer<*>
-    ) {
-        logger.info("Listening on port 8080!")
-        GlobalScope.launch {
-            main(cloudServiceManager, shutdownHandler)
-        }
-    }
-
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.LOADED)
     fun load() {
         val config = this.readConfig(DocumentFactory.json())
@@ -67,7 +53,8 @@ class CloudNet_Rest_Module : DriverModule() {
                     config.getString("password"),
                     config.getString("database"),
                     config.getString("host"),
-                    config.getInt("port")
+                    config.getInt("port"),
+                    config.getInt("restapi_port")
                 )
             )
         )
@@ -82,11 +69,15 @@ class CloudNet_Rest_Module : DriverModule() {
                     "123456",
                     "cloudnet_rest",
                     "127.0.0.1",
-                    3306
+                    3306,
+                    8080
                 )
             },
             DocumentFactory.json()
         )
+
+
+
 
         val config = HikariConfig()
 
@@ -112,6 +103,18 @@ class CloudNet_Rest_Module : DriverModule() {
             }
         }
         ds.close()
+    }
+
+    @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.STARTED)
+    fun started(
+        @NotNull cloudServiceManager: CloudServiceManager,
+        @NotNull shutdownHandler: ShutdownHandler,
+        @NotNull @Named("module") injectionLayer: InjectionLayer<*>
+    ) {
+        GlobalScope.launch {
+            main(cloudServiceManager, shutdownHandler)
+        }
+        logger.info("Rest API listening on port ${configuration!!.restapi_port.toString()}!")
     }
 
     @ModuleTask(lifecycle = ModuleLifeCycle.STARTED)
@@ -145,7 +148,8 @@ class CloudNet_Rest_Module : DriverModule() {
         @NotNull cloudServiceManager: CloudServiceManager,
         @NotNull shutdownHandler: ShutdownHandler
     ) {
-        embeddedServer(Netty, port = 8080) {
+        val port = configuration!!.restapi_port
+        embeddedServer(Netty, port = port) {
 
             install(ShutDownUrl.ApplicationCallPlugin) {
                 shutDownUrl = "/debug/shutdown"

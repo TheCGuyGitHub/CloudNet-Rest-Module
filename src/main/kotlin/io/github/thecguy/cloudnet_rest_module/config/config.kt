@@ -8,5 +8,6 @@ class Configuration(
     @NotNull val password: String,
     @NotNull val database: String,
     @NotNull val host: String,
-    @NotNull val port: Int
+    @NotNull val port: Int,
+    @NotNull val restapi_port: Int
 )
