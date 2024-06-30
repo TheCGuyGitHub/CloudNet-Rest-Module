@@ -104,6 +104,12 @@ class CloudNet_Rest_Module : DriverModule() {
             connection.prepareStatement("CREATE TABLE IF NOT EXISTS cloudnet_rest_users (id SERIAL PRIMARY KEY, user TEXT, password TEXT)").use { statement ->
                 statement.executeUpdate()
             }
+            connection.prepareStatement("CREATE TABLE IF NOT EXISTS cloudnet_rest_permission (id SERIAL PRIMARY KEY, user TEXT, permission TEXT)").use { statement ->
+                statement.executeUpdate()
+            }
+            connection.prepareStatement("CREATE TABLE IF NOT EXISTS cloudnet_rest_auths (id SERIAL PRIMARY KEY, type TEXT, value TEXT, timestamp TEXT)").use { statement ->
+                statement.executeUpdate()
+            }
         }
         ds.close()
     }
