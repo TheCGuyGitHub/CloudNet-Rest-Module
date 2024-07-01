@@ -30,19 +30,25 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.NotNull
 import kotlin.concurrent.Volatile
+import kotlin.properties.Delegates
 
 
 @Singleton
 class CloudNet_Rest_Module : DriverModule() {
 
-    @Volatile
-    private var configuration: Configuration? = null
+
+     var configuration: Configuration? = null
     private val logger: Logger = LogManager.logger(CloudNet_Rest_Module::class.java)
+     var host: String? = null
+    var port: Int? = null
+     var database: String? = null
+     var username: String? = null
+     var password: String? = null
 
 
 
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.LOADED)
-    fun load() {
+    fun convertConfig() {
         val config = this.readConfig(DocumentFactory.json())
         this.writeConfig(
             Document.newJsonDocument().appendTree(
@@ -57,6 +63,7 @@ class CloudNet_Rest_Module : DriverModule() {
             )
         )
     }
+
     @ModuleTask(order = 125, lifecycle = ModuleLifeCycle.LOADED)
     fun lload() {
          configuration = this.readConfig(
@@ -74,21 +81,23 @@ class CloudNet_Rest_Module : DriverModule() {
             DocumentFactory.json()
         )
 
-
-
+        host = configuration?.host
+        port = configuration?.port
+        database = configuration?.database
+        username = configuration?.username
+        password = configuration?.password
 
         val config = HikariConfig()
 
-        config.jdbcUrl = "jdbc:mysql://${configuration!!.host}:${configuration!!.port}/${configuration!!.database}"
-        config.username = configuration!!.username
-        config.password = configuration!!.password
+        config.jdbcUrl = "jdbc:mysql://${configuration?.host}:${configuration?.port}/${configuration?.database}"
+        config.username = configuration?.username
+        config.password = configuration?.password
         config.driverClassName = "com.mysql.cj.jdbc.Driver"
         config.addDataSourceProperty("cachePrepStmts", "true")
         config.addDataSourceProperty("prepStmtCacheSize", "250")
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
 
         val ds = HikariDataSource(config)
-
         ds.connection.use { connection ->
             connection.prepareStatement("CREATE TABLE IF NOT EXISTS cloudnet_rest_users (id SERIAL PRIMARY KEY, user TEXT, password TEXT)").use { statement ->
                 statement.executeUpdate()
@@ -105,26 +114,40 @@ class CloudNet_Rest_Module : DriverModule() {
 
 
         fun sqlwr(sql: String) {
-            println("DSYM1")
-            val config = HikariConfig()
-            println("DSYM1")
-            config.jdbcUrl = "jdbc:mysql://127.0.0.1:3306/cloudnet_rest"
-            println("DSYM1")
-            config.username = "cloudnet"
-            println("DSYM1")
-            config.password = "cloudnet"
-            println("DSYM1")
-            config.driverClassName = "com.mysql.cj.jdbc.Driver"
-            println("DSYM1")
-            config.addDataSourceProperty("cachePrepStmts", "true")
-            println("DSYM1")
-            config.addDataSourceProperty("prepStmtCacheSize", "250")
-            println("DSYM1")
-            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
-            println("DSYM1")
-            val ds = HikariDataSource(config)
+            println("DEBUG:")
+            println(host)
+            println(port)
+            println(database)
+            println(password)
 
-            println(ds)
+
+
+
+            val host = "192.168.0.226"
+            val port = 3306
+            val database = "cloudnet_rest"
+            val username = "cloudnet"
+            val password = "cloudnet"
+
+
+            val CONNECT_URL_FORMAT: String = "jdbc:mysql://%s:%d/%s?serverTimezone=UTC"
+
+            val config = HikariConfig()
+
+            config.jdbcUrl = String.format(
+                CONNECT_URL_FORMAT,
+                host, port, database
+            )
+            config.username = username
+            config.password = password
+            config.driverClassName = "com.mysql.cj.jdbc.Driver"
+            config.addDataSourceProperty("cachePrepStmts", "true")
+            config.addDataSourceProperty("prepStmtCacheSize", "250")
+            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
+
+
+            val ds = HikariDataSource(config)
+            //println(ds)
             ds.connection.use { connection ->
                 println("DEBUG SYM1 $sql")
                 connection.prepareStatement("SELECT * FROM cloudnet_rest_users").use { statement ->
@@ -132,7 +155,7 @@ class CloudNet_Rest_Module : DriverModule() {
                     statement.executeQuery().use { resultSet ->
                         println("DEBUG SYM3")
                         if (resultSet.next()) {
-                            println("Query Result: ${resultSet.getArray(1)}")
+                            println("Query Result: ${resultSet}")
                         }
                         ds.close()
                     }

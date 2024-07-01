@@ -11,12 +11,16 @@ import eu.cloudnetservice.driver.inject.InjectionLayer
 import eu.cloudnetservice.driver.provider.ServiceTaskProvider
 import eu.cloudnetservice.driver.service.ServiceTask
 import eu.cloudnetservice.driver.database.DatabaseProvider
+import eu.cloudnetservice.driver.document.Document
 import eu.cloudnetservice.node.command.annotation.Description
 import eu.cloudnetservice.node.command.source.CommandSource
 
 import io.github.thecguy.cloudnet_rest_module.CloudNet_Rest_Module
+import io.github.thecguy.cloudnet_rest_module.config.Configuration
 
 import jakarta.inject.Singleton
+import org.checkerframework.checker.nullness.qual.NonNull
+import org.jetbrains.annotations.NotNull
 import java.util.*
 
 
@@ -24,6 +28,13 @@ import java.util.*
 @CommandPermission("thecguy.test")
 @Description("test")
 class rest {
+
+
+    public class test(
+        @NotNull config: Configuration
+    ) {
+        public val config = config
+    }
 
     private val taskProvider: ServiceTaskProvider = InjectionLayer.ext().instance(ServiceTaskProvider::class.java)
     private val databaseProvider: DatabaseProvider = InjectionLayer.ext().instance(DatabaseProvider::class.java)
@@ -43,8 +54,14 @@ class rest {
     fun users(
         source: CommandSource,
     ) {
+
+
+        println("ich binrunned")
         val sql = CloudNet_Rest_Module()
+        println("so far so good")
         sql.sqlwr("SELECT * FROM cloudnet_rest_users")
+        println("how the fuk")
+
     }
 
 
