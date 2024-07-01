@@ -103,6 +103,43 @@ class CloudNet_Rest_Module : DriverModule() {
         ds.close()
     }
 
+
+        fun sqlwr(sql: String) {
+            println("DSYM1")
+            val config = HikariConfig()
+            println("DSYM1")
+            config.jdbcUrl = "jdbc:mysql://127.0.0.1:3306/cloudnet_rest"
+            println("DSYM1")
+            config.username = "cloudnet"
+            println("DSYM1")
+            config.password = "cloudnet"
+            println("DSYM1")
+            config.driverClassName = "com.mysql.cj.jdbc.Driver"
+            println("DSYM1")
+            config.addDataSourceProperty("cachePrepStmts", "true")
+            println("DSYM1")
+            config.addDataSourceProperty("prepStmtCacheSize", "250")
+            println("DSYM1")
+            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
+            println("DSYM1")
+            val ds = HikariDataSource(config)
+
+            println(ds)
+            ds.connection.use { connection ->
+                println("DEBUG SYM1 $sql")
+                connection.prepareStatement("SELECT * FROM cloudnet_rest_users").use { statement ->
+                    println("DEBUG SYM2")
+                    statement.executeQuery().use { resultSet ->
+                        println("DEBUG SYM3")
+                        if (resultSet.next()) {
+                            println("Query Result: ${resultSet.getArray(1)}")
+                        }
+                        ds.close()
+                    }
+                }
+            }
+        }
+
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.STARTED)
     fun started(
         @NotNull cloudServiceManager: CloudServiceManager,
