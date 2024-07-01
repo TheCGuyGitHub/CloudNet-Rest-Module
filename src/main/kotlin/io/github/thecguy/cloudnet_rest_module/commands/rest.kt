@@ -54,14 +54,36 @@ class rest {
     fun users(
         source: CommandSource,
     ) {
-
-
-        println("ich binrunned")
-        val sql = CloudNet_Rest_Module()
-        println("so far so good")
-        sql.sqlwr("SELECT * FROM cloudnet_rest_users")
-        println("how the fuk")
-
+        val host = "127.0.0.1"
+        val port = 3306
+        val database = "cloudnet_rest"
+        val username = "cloudnet"
+        val password = "cloudnet"
+        val CONNECT_URL_FORMAT: String = "jdbc:mysql://%s:%d/%s?serverTimezone=UTC"
+        val config = HikariConfig()
+        config.jdbcUrl = String.format(
+            CONNECT_URL_FORMAT,
+            host, port, database
+        )
+        config.username = username
+        config.password = password
+        config.driverClassName = "com.mysql.cj.jdbc.Driver"
+        config.addDataSourceProperty("cachePrepStmts", "true")
+        config.addDataSourceProperty("prepStmtCacheSize", "250")
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
+        val ds = HikariDataSource(config)
+        ds.connection.use { connection ->
+            connection.prepareStatement("SELECT user FROM cloudnet_rest_users").use { statement ->
+                statement.executeQuery().use { resultSet ->
+                    source.sendMessage("Current registered RestAPI users:")
+                    while (resultSet.next()) {
+                        val user = resultSet.getString("user")
+                        source.sendMessage(user)
+                    }
+                }
+            }
+        }
+        ds.close()
     }
 
 

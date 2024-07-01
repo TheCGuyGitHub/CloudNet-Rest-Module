@@ -114,26 +114,13 @@ class CloudNet_Rest_Module : DriverModule() {
 
 
         fun sqlwr(sql: String) {
-            println("DEBUG:")
-            println(host)
-            println(port)
-            println(database)
-            println(password)
-
-
-
-
             val host = "192.168.0.226"
             val port = 3306
             val database = "cloudnet_rest"
             val username = "cloudnet"
             val password = "cloudnet"
-
-
             val CONNECT_URL_FORMAT: String = "jdbc:mysql://%s:%d/%s?serverTimezone=UTC"
-
             val config = HikariConfig()
-
             config.jdbcUrl = String.format(
                 CONNECT_URL_FORMAT,
                 host, port, database
@@ -144,23 +131,17 @@ class CloudNet_Rest_Module : DriverModule() {
             config.addDataSourceProperty("cachePrepStmts", "true")
             config.addDataSourceProperty("prepStmtCacheSize", "250")
             config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
-
-
             val ds = HikariDataSource(config)
-            //println(ds)
             ds.connection.use { connection ->
-                println("DEBUG SYM1 $sql")
-                connection.prepareStatement("SELECT * FROM cloudnet_rest_users").use { statement ->
-                    println("DEBUG SYM2")
+                connection.prepareStatement("SELECT user FROM cloudnet_rest_users").use { statement ->
                     statement.executeQuery().use { resultSet ->
-                        println("DEBUG SYM3")
-                        if (resultSet.next()) {
-                            println("Query Result: ${resultSet}")
+                        while (resultSet.next()) {
+                            val user = resultSet.getString("user")
                         }
-                        ds.close()
                     }
                 }
             }
+            ds.close()
         }
 
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.STARTED)
