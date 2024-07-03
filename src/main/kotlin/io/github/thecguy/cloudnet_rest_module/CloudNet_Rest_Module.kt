@@ -2,10 +2,8 @@ package io.github.thecguy.cloudnet_rest_module
 
 
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
-import eu.cloudnetservice.common.log.LogManager
-import eu.cloudnetservice.common.log.Logger
+
+import eu.cloudnetservice.common.language.I18n
 import eu.cloudnetservice.driver.document.Document
 import eu.cloudnetservice.driver.document.DocumentFactory
 import eu.cloudnetservice.driver.inject.InjectionLayer
@@ -17,7 +15,9 @@ import eu.cloudnetservice.node.command.CommandProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
 import io.github.thecguy.cloudnet_rest_module.commands.rest
 import io.github.thecguy.cloudnet_rest_module.config.Configuration
+import io.github.thecguy.cloudnet_rest_module.utli.DBManager
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.response.*
@@ -29,23 +29,18 @@ import kong.unirest.core.json.JSONObject
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.NotNull
-import kotlin.concurrent.Volatile
-import kotlin.properties.Delegates
+import java.util.Base64
 
 
 @Singleton
 class CloudNet_Rest_Module : DriverModule() {
 
-
      var configuration: Configuration? = null
-    private val logger: Logger = LogManager.logger(CloudNet_Rest_Module::class.java)
      var host: String? = null
-    var port: Int? = null
+     var port: Int? = null
      var database: String? = null
      var username: String? = null
      var password: String? = null
-
-
 
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.LOADED)
     fun convertConfig() {
@@ -80,85 +75,36 @@ class CloudNet_Rest_Module : DriverModule() {
             },
             DocumentFactory.json()
         )
-
-        host = configuration?.host
-        port = configuration?.port
-        database = configuration?.database
-        username = configuration?.username
-        password = configuration?.password
-
-        val config = HikariConfig()
-
-        config.jdbcUrl = "jdbc:mysql://${configuration?.host}:${configuration?.port}/${configuration?.database}"
-        config.username = configuration?.username
-        config.password = configuration?.password
-        config.driverClassName = "com.mysql.cj.jdbc.Driver"
-        config.addDataSourceProperty("cachePrepStmts", "true")
-        config.addDataSourceProperty("prepStmtCacheSize", "250")
-        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
-
-        val ds = HikariDataSource(config)
-        ds.connection.use { connection ->
-            connection.prepareStatement("CREATE TABLE IF NOT EXISTS cloudnet_rest_users (id SERIAL PRIMARY KEY, user TEXT, password TEXT)").use { statement ->
-                statement.executeUpdate()
-            }
-            connection.prepareStatement("CREATE TABLE IF NOT EXISTS cloudnet_rest_permission (id SERIAL PRIMARY KEY, user TEXT, permission TEXT)").use { statement ->
-                statement.executeUpdate()
-            }
-            connection.prepareStatement("CREATE TABLE IF NOT EXISTS cloudnet_rest_auths (id SERIAL PRIMARY KEY, type TEXT, value TEXT, timestamp TEXT)").use { statement ->
-                statement.executeUpdate()
-            }
-        }
-        ds.close()
+        val dbm = DBManager()
+        dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_users (id SERIAL PRIMARY KEY, user TEXT, password TEXT)")
+        dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_permission (id SERIAL PRIMARY KEY, user TEXT, permission TEXT)")
+        dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_auths (id SERIAL PRIMARY KEY, type TEXT, value TEXT, timestamp TEXT)")
     }
-
-
-        fun sqlwr(sql: String) {
-            val host = "192.168.0.226"
-            val port = 3306
-            val database = "cloudnet_rest"
-            val username = "cloudnet"
-            val password = "cloudnet"
-            val CONNECT_URL_FORMAT: String = "jdbc:mysql://%s:%d/%s?serverTimezone=UTC"
-            val config = HikariConfig()
-            config.jdbcUrl = String.format(
-                CONNECT_URL_FORMAT,
-                host, port, database
-            )
-            config.username = username
-            config.password = password
-            config.driverClassName = "com.mysql.cj.jdbc.Driver"
-            config.addDataSourceProperty("cachePrepStmts", "true")
-            config.addDataSourceProperty("prepStmtCacheSize", "250")
-            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
-            val ds = HikariDataSource(config)
-            ds.connection.use { connection ->
-                connection.prepareStatement("SELECT user FROM cloudnet_rest_users").use { statement ->
-                    statement.executeQuery().use { resultSet ->
-                        while (resultSet.next()) {
-                            val user = resultSet.getString("user")
-                        }
-                    }
-                }
-            }
-            ds.close()
-        }
-
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.STARTED)
     fun started(
         @NotNull cloudServiceManager: CloudServiceManager,
         @NotNull shutdownHandler: ShutdownHandler,
         @NotNull @Named("module") injectionLayer: InjectionLayer<*>
     ) {
+        println("Decoded: ${Base64.getDecoder().decode("amV0YnJhaW5zOmZvb2Jhcg")}")
+
+
+        I18n.loadFromLangPath(CloudNet_Rest_Module::class.java)
         GlobalScope.launch {
             main(cloudServiceManager, shutdownHandler)
         }
-        logger.info("Rest API listening on port ${configuration!!.restapi_port.toString()}!")
+        println("Rest API listening on port ${configuration!!.restapi_port.toString()}!")
     }
-
     @ModuleTask(lifecycle = ModuleLifeCycle.STARTED)
     fun start(commandProvider: CommandProvider) {
         commandProvider.register(rest::class.java)
+    }
+    @ModuleTask(lifecycle = ModuleLifeCycle.STOPPED)
+    fun stop() {
+        val dbm = DBManager()
+        println("Closing DB connection!")
+        dbm.closedb()
+        println("Closed DB connection!")
     }
 
 
@@ -194,12 +140,34 @@ class CloudNet_Rest_Module : DriverModule() {
                 shutDownUrl = "/debug/shutdown"
                 exitCodeSupplier = { 0 }
             }
+            install(Authentication) {
+                basic("auth-basic") {
+                    realm = "Access to the '/' path"
+                    validate { credentials ->
+                        if (credentials.name == "jetbrains" && credentials.password == "foobar") {
+                            UserIdPrincipal(credentials.name)
+                        } else {
+                            null
+                        }
+                    }
 
+
+                }
+            }
 
 
             routing {
 
                 //swaggerUI(path = "swagger", swaggerFile = "openapi/swagger.yaml")
+
+
+                authenticate("auth-basic") {
+                    get("/auth") {
+                        call.respondText("You have reached the auth site!")
+                    }
+                }
+
+
 
                 get("/") {
 

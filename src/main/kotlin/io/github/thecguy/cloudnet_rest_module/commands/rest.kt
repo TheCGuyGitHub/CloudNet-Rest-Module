@@ -1,26 +1,25 @@
 package io.github.thecguy.cloudnet_rest_module.commands
 
+import cloud.commandframework.annotations.Argument
 import cloud.commandframework.annotations.CommandMethod
 import cloud.commandframework.annotations.CommandPermission
 import cloud.commandframework.annotations.parsers.Parser
 import cloud.commandframework.annotations.suggestions.Suggestions
 import cloud.commandframework.context.CommandContext
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
+
+import eu.cloudnetservice.common.language.I18n
 import eu.cloudnetservice.driver.inject.InjectionLayer
 import eu.cloudnetservice.driver.provider.ServiceTaskProvider
 import eu.cloudnetservice.driver.service.ServiceTask
-import eu.cloudnetservice.driver.database.DatabaseProvider
-import eu.cloudnetservice.driver.document.Document
 import eu.cloudnetservice.node.command.annotation.Description
 import eu.cloudnetservice.node.command.source.CommandSource
 
-import io.github.thecguy.cloudnet_rest_module.CloudNet_Rest_Module
-import io.github.thecguy.cloudnet_rest_module.config.Configuration
+import io.github.thecguy.cloudnet_rest_module.utli.DBManager
 
 import jakarta.inject.Singleton
-import org.checkerframework.checker.nullness.qual.NonNull
+
 import org.jetbrains.annotations.NotNull
+
 import java.util.*
 
 
@@ -28,16 +27,8 @@ import java.util.*
 @CommandPermission("thecguy.test")
 @Description("test")
 class rest {
-
-
-    public class test(
-        @NotNull config: Configuration
-    ) {
-        public val config = config
-    }
-
+    private val dbManager = DBManager()
     private val taskProvider: ServiceTaskProvider = InjectionLayer.ext().instance(ServiceTaskProvider::class.java)
-    private val databaseProvider: DatabaseProvider = InjectionLayer.ext().instance(DatabaseProvider::class.java)
 
 
     @Suggestions("rest")
@@ -54,38 +45,73 @@ class rest {
     fun users(
         source: CommandSource,
     ) {
-        val host = "127.0.0.1"
-        val port = 3306
-        val database = "cloudnet_rest"
-        val username = "cloudnet"
-        val password = "cloudnet"
-        val CONNECT_URL_FORMAT: String = "jdbc:mysql://%s:%d/%s?serverTimezone=UTC"
-        val config = HikariConfig()
-        config.jdbcUrl = String.format(
-            CONNECT_URL_FORMAT,
-            host, port, database
-        )
-        config.username = username
-        config.password = password
-        config.driverClassName = "com.mysql.cj.jdbc.Driver"
-        config.addDataSourceProperty("cachePrepStmts", "true")
-        config.addDataSourceProperty("prepStmtCacheSize", "250")
-        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
-        val ds = HikariDataSource(config)
-        ds.connection.use { connection ->
-            connection.prepareStatement("SELECT user FROM cloudnet_rest_users").use { statement ->
-                statement.executeQuery().use { resultSet ->
-                    source.sendMessage("Current registered RestAPI users:")
-                    while (resultSet.next()) {
-                        val user = resultSet.getString("user")
-                        source.sendMessage(user)
-                    }
-                }
-            }
-        }
-        ds.close()
+        source.sendMessage(I18n.trans("module-rest-command-users"))
+        source.sendMessage(dbManager.cmd_rest_users())
     }
-
-
-
+    @CommandMethod("rest user create <username> <password>")
+    fun createUser(
+        source: CommandSource,
+        @NotNull @Argument("username") username: String,
+        @NotNull @Argument("password") password: String
+    ) {
+        val users = dbManager.cmd_rest_users()
+        if (users.contains(username)) {
+            source.sendMessage(I18n.trans("module-rest-command-usersexist"))
+        } else {
+            val encodedpw: String = Base64.getEncoder().encodeToString(password.toByteArray())
+            dbManager.dbexecute("INSERT INTO cloudnet_rest_users (user, password) VALUES ('$username', '$encodedpw')")
+            source.sendMessage(I18n.trans("module-rest-command-createduser"))
+        }
+    }
+    @CommandMethod("rest user delete <username>")
+    fun deleteUser(
+        source: CommandSource,
+        @NotNull @Argument("username") username: String
+    ) {
+        val users = dbManager.cmd_rest_users()
+        if (users.contains(username)) {
+            dbManager.dbexecute("DELETE FROM cloudnet_rest_users WHERE user = '$username'")
+            source.sendMessage(I18n.trans("module-rest-command-deluser"))
+        } else {
+            source.sendMessage(I18n.trans("module-rest-command-usernotexist"))
+        }
+    }
+    @CommandMethod("rest user user <username> add permission <permission>")
+    fun addPermsToUser(
+        source: CommandSource,
+        @NotNull @Argument("username") username: String,
+        @NotNull @Argument("permission") permissison: String
+    ) {
+        val users = dbManager.cmd_rest_users()
+        if (users.contains(username)) {
+            val perms = dbManager.cmd_rest_perms(username)
+            if (perms.contains(permissison)) {
+                source.sendMessage(I18n.trans("module-rest-command-permsalredy"))
+            } else {
+                dbManager.dbexecute("INSERT INTO cloudnet_rest_permission (user, permission) VALUE ('$username', '$permissison')")
+                source.sendMessage(I18n.trans("module-rest-command-permsadded"))
+            }
+        } else {
+            source.sendMessage(I18n.trans("module-rest-command-usernotexist"))
+        }
+    }
+    @CommandMethod("rest user user <username> remove permission <permission>")
+    fun remPerms(
+        source: CommandSource,
+        @NotNull @Argument("username") username: String,
+        @NotNull @Argument("permission") permisison: String
+    ) {
+        val users = dbManager.cmd_rest_users()
+        if (users.contains(username)) {
+            val perms = dbManager.cmd_rest_perms(username)
+            if (perms.contains(permisison)) {
+                dbManager.dbexecute("DELETE FROM cloudnet_rest_permission WHERE permission = '$permisison'")
+                source.sendMessage(I18n.trans("module-rest-command-permsrem"))
+            } else {
+                source.sendMessage(I18n.trans("module-rest-command-notperms"))
+            }
+        } else {
+            source.sendMessage(I18n.trans("module-rest-command-usernotexist"))
+        }
+    }
 }

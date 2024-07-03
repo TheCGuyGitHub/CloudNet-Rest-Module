@@ -32,13 +32,16 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
     implementation("io.ktor:ktor-server-core:$ktor_version")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-swagger:$ktor_version")
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-server-auth:$ktor_version")
+
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
     implementation("com.google.code.gson:gson:2.8.9")
 
     implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation("org.slf4j:slf4j-api:1.7.25")
+    implementation("ch.qos.logback:logback-classic:1.5.6")
 
 }
 
