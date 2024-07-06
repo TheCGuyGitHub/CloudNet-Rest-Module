@@ -35,6 +35,9 @@ dependencies {
     implementation("io.ktor:ktor-server-swagger:$ktor_version")
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
     implementation("io.ktor:ktor-server-auth:$ktor_version")
+    implementation("io.ktor:ktor-server-auth-jwt:$ktor_version")
+
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.4.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
     implementation("com.google.code.gson:gson:2.8.9")
@@ -54,9 +57,6 @@ tasks {
 
     }
     named("compileKotlin", org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask::class.java) {
-        compilerOptions {
-            freeCompilerArgs.add("-Xexport-kdoc")
-        }
     }
 }
 

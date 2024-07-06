@@ -15,7 +15,10 @@ import eu.cloudnetservice.node.command.CommandProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
 import io.github.thecguy.cloudnet_rest_module.commands.rest
 import io.github.thecguy.cloudnet_rest_module.config.Configuration
+import io.github.thecguy.cloudnet_rest_module.coroutines.AuthChecker
 import io.github.thecguy.cloudnet_rest_module.utli.DBManager
+import io.github.thecguy.cloudnet_rest_module.utli.JsonUtils
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.engine.*
@@ -24,23 +27,20 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import jakarta.inject.Named
 import jakarta.inject.Singleton
-import kong.unirest.core.json.JSONArray
-import kong.unirest.core.json.JSONObject
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.NotNull
-import java.util.Base64
+import java.util.*
 
 
 @Singleton
 class CloudNet_Rest_Module : DriverModule() {
+     private val dbm = DBManager()
+     private val jsonUtils = JsonUtils()
+    private val authChecker = AuthChecker()
+    @Volatile
+     private var configuration: Configuration? = null
 
-     var configuration: Configuration? = null
-     var host: String? = null
-     var port: Int? = null
-     var database: String? = null
-     var username: String? = null
-     var password: String? = null
 
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.LOADED)
     fun convertConfig() {
@@ -60,7 +60,7 @@ class CloudNet_Rest_Module : DriverModule() {
     }
 
     @ModuleTask(order = 125, lifecycle = ModuleLifeCycle.LOADED)
-    fun lload() {
+    fun load() {
          configuration = this.readConfig(
             Configuration::class.java,
             {
@@ -75,10 +75,11 @@ class CloudNet_Rest_Module : DriverModule() {
             },
             DocumentFactory.json()
         )
-        val dbm = DBManager()
         dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_users (id SERIAL PRIMARY KEY, user TEXT, password TEXT)")
         dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_permission (id SERIAL PRIMARY KEY, user TEXT, permission TEXT)")
         dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_auths (id SERIAL PRIMARY KEY, type TEXT, value TEXT, timestamp TEXT)")
+        dbm.dbexecute("DELETE FROM cloudnet_rest_auths")
+        authChecker.schedule()
     }
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.STARTED)
     fun started(
@@ -86,14 +87,13 @@ class CloudNet_Rest_Module : DriverModule() {
         @NotNull shutdownHandler: ShutdownHandler,
         @NotNull @Named("module") injectionLayer: InjectionLayer<*>
     ) {
-        println("Decoded: ${Base64.getDecoder().decode("amV0YnJhaW5zOmZvb2Jhcg")}")
 
 
         I18n.loadFromLangPath(CloudNet_Rest_Module::class.java)
         GlobalScope.launch {
             main(cloudServiceManager, shutdownHandler)
         }
-        println("Rest API listening on port ${configuration!!.restapi_port.toString()}!")
+        println("Rest API listening on port {configuration!!.restapi_port}!")
     }
     @ModuleTask(lifecycle = ModuleLifeCycle.STARTED)
     fun start(commandProvider: CommandProvider) {
@@ -101,32 +101,9 @@ class CloudNet_Rest_Module : DriverModule() {
     }
     @ModuleTask(lifecycle = ModuleLifeCycle.STOPPED)
     fun stop() {
-        val dbm = DBManager()
         println("Closing DB connection!")
         dbm.closedb()
         println("Closed DB connection!")
-    }
-
-
-    private fun services(cloudServiceManager: CloudServiceManager): JSONObject {
-        val ser = cloudServiceManager.services()
-        val servicesArray = JSONArray()
-        ser.forEach { service ->
-            val serviceObject = JSONObject()
-            serviceObject.put("Name", service.name())
-            val addressObject = JSONObject()
-            addressObject.put("host", service.address().host)
-            addressObject.put("port", service.address().port)
-            serviceObject.put("Address", addressObject)
-            serviceObject.put("Connected", service.connected())
-            serviceObject.put("LifeCycle", service.lifeCycle())
-            serviceObject.put("CreationTime", service.creationTime())
-            serviceObject.put("ConnectedTime", service.connectedTime())
-            servicesArray.put(serviceObject)
-        }
-        val result = JSONObject()
-        result.put("services", servicesArray)
-        return result
     }
 
     private fun main(
@@ -144,54 +121,67 @@ class CloudNet_Rest_Module : DriverModule() {
                 basic("auth-basic") {
                     realm = "Access to the '/' path"
                     validate { credentials ->
-                        if (credentials.name == "jetbrains" && credentials.password == "foobar") {
-                            UserIdPrincipal(credentials.name)
+                        val users = dbm.cmd_rest_users()
+                        if (users.contains(credentials.name)) {
+                            val pw = String(Base64.getDecoder().decode(credentials.password))
+                            val pww = dbm.getpw(credentials.name)
+                            val pwwd = String(Base64.getDecoder().decode(pww))
+                            if (pw == pwwd) {
+                                println("USER AUTH SUCCESS!")
+                                UserIdPrincipal(credentials.name)
+                            } else {
+                                println("error in auth")
+                                null
+                            }
                         } else {
+                            println("error in auth")
                             null
                         }
                     }
-
-
                 }
             }
-
 
             routing {
 
                 //swaggerUI(path = "swagger", swaggerFile = "openapi/swagger.yaml")
-
-
                 authenticate("auth-basic") {
                     get("/auth") {
-                        call.respondText("You have reached the auth site!")
+                        call.respond(jsonUtils.token().toString(4))
                     }
                 }
 
 
-
-                get("/") {
-
-                    call.respondText("Welcome to my Rest API!")
-                }
                 get("/services") {
-                    val services = services(cloudServiceManager)
-                    call.respondText(
-                        services.toString(4)
-                            .replace("[", "")
-                            .replace("]", "")
-                    )
+                    val services = jsonUtils.services(cloudServiceManager)
+                    val tokens = dbm.tokens()
+                    val rToken = call.request.headers["Authorization"]
+                    if (tokens.contains(rToken)) {
+                        call.respondText(
+                            services.toString(4)
+                                .replace("[", "")
+                                .replace("]", "")
+                        )
+                    } else {
+                        call.response.status(HttpStatusCode.Unauthorized)
+                    }
                 }
 
                 get("/services/{service}") {
                     val services = cloudServiceManager.services().map { it.name() }.toList()
                     val serv = services.contains(call.parameters["service"])
-                    if (serv) {
-                        val servout = cloudServiceManager.serviceByName(call.parameters["service"].toString())
-                        if (servout != null) {
-                            call.respondText("Service: ${servout.name()} \n ServiceID: ${servout.serviceId()} \n Address: ${servout.address()} \n Connected: ${servout.connected()} \n ConnectedTime: ${servout.connectedTime()} \n CreationTime: ${servout.creationTime()} \n LifeCycle: ${servout.lifeCycle()} \n Provider: ${servout.provider()}")
+                    val tokens = dbm.tokens()
+                    val rToken = call.request.headers["Authorization"]
+                    if (tokens.contains(rToken)) {
+                        if (serv) {
+                            val servout = cloudServiceManager.serviceByName(call.parameters["service"].toString())
+                            if (servout != null) {
+                                call.respondText("Service: ${servout.name()} \n ServiceID: ${servout.serviceId()} \n Address: ${servout.address()} \n Connected: ${servout.connected()} \n ConnectedTime: ${servout.connectedTime()} \n CreationTime: ${servout.creationTime()} \n LifeCycle: ${servout.lifeCycle()} \n Provider: ${servout.provider()}")
+                            }
+                        } else {
+                            call.respondText("Du Mensch, es gibt diesen Service NICHT! Wasn vollidiot!")
                         }
                     } else {
-                        call.respondText("Du Mensch, es gibt diesen Service NICHT! Wasn vollidiot!")
+                        call.response.status(HttpStatusCode.Unauthorized)
                     }
                 }
 
@@ -199,6 +189,13 @@ class CloudNet_Rest_Module : DriverModule() {
                     call.respondText("NOTE: The Cloud is shutting down!")
                     shutdownHandler.shutdown()
                 }
+
+
+                get("/") {
+
+                    call.respondText("Welcome to my Rest API!")
+                }
+
 
 
             }

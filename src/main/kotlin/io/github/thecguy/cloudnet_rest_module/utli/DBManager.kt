@@ -23,7 +23,7 @@ class DBManager internal constructor() {
         val database = "cloudnet_rest"
         val username = "cloudnet"
         val password = "cloudnet"
-        val CONNECT_URL_FORMAT: String = "jdbc:mysql://%s:%d/%s?serverTimezone=UTC"
+        val CONNECT_URL_FORMAT: String = "jdbc:mariadb://%s:%d/%s?serverTimezone=UTC"
 
         config.jdbcUrl = String.format(
             CONNECT_URL_FORMAT,
@@ -31,7 +31,7 @@ class DBManager internal constructor() {
         )
         config.username = username
         config.password = password
-        config.driverClassName = "com.mysql.cj.jdbc.Driver"
+        config.driverClassName = "org.mariadb.jdbc.Driver"
         config.maxLifetime = 9223372036854775807
 
         ds = HikariDataSource(config)
@@ -54,6 +54,54 @@ class DBManager internal constructor() {
     fun closedb() {
         ds.close()
     }
+
+    fun getpw(user: String): String {
+        val users = cmd_rest_users()
+        var pw: String = ""
+        if (users.contains(user)) {
+            ds.connection.use { connection ->
+                connection.prepareStatement("SELECT password FROM cloudnet_rest_users WHERE user = '$user'").use { statement ->
+                    statement.executeQuery().use { resultSet ->
+                        if (resultSet.next()) {
+                            pw = resultSet.getString("password")
+                        }
+                    }
+                }
+            }
+        }
+        return pw
+    }
+
+    fun tokens(): List<String> {
+        val tokenList = mutableListOf<String>()
+        ds.connection.use { connection ->
+            connection.prepareStatement("SELECT value FROM cloudnet_rest_auths").use { statement ->
+                statement.executeQuery().use { resultSet ->
+                    while (resultSet.next()) {
+                        val token = resultSet.getString("value")
+                        tokenList.add(token)
+                    }
+                }
+            }
+        }
+        return tokenList
+    }
+    fun tokensDate(): List<String> {
+        val exprList = mutableListOf<String>()
+        ds.connection.use { connection ->
+            connection.prepareStatement("SELECT timestamp FROM cloudnet_rest_auths").use { statement ->
+                statement.executeQuery().use { resultSet ->
+                    while (resultSet.next()) {
+                        val exprs = resultSet.getString("timestamp")
+                        exprList.add(exprs)
+                    }
+                }
+            }
+        }
+        return exprList
+    }
+
+
 
     fun cmd_rest_users(): List<String> {
         val userList = mutableListOf<String>()
