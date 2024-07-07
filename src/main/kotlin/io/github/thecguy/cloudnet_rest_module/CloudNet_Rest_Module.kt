@@ -14,11 +14,15 @@ import eu.cloudnetservice.node.ShutdownHandler
 import eu.cloudnetservice.node.command.CommandProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
 import eu.cloudnetservice.driver.provider.ServiceTaskProvider
+
+
 import io.github.thecguy.cloudnet_rest_module.commands.rest
 import io.github.thecguy.cloudnet_rest_module.config.Configuration
 import io.github.thecguy.cloudnet_rest_module.coroutines.AuthChecker
+import io.github.thecguy.cloudnet_rest_module.utli.AuthUtil
 import io.github.thecguy.cloudnet_rest_module.utli.DBManager
 import io.github.thecguy.cloudnet_rest_module.utli.JsonUtils
+
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -29,6 +33,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import jakarta.inject.Named
 import jakarta.inject.Singleton
+import kong.unirest.core.json.JSONObject
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.NotNull
@@ -37,11 +42,12 @@ import java.util.*
 
 @Singleton
 class CloudNet_Rest_Module : DriverModule() {
-     private val dbm = DBManager()
-     private val jsonUtils = JsonUtils()
+    private val dbm = DBManager()
+    private val jsonUtils = JsonUtils()
     private val authChecker = AuthChecker()
+    private val authUtil = AuthUtil()
     @Volatile
-     private var configuration: Configuration? = null
+    private var configuration: Configuration? = null
 
 
     @ModuleTask(order = 127, lifecycle = ModuleLifeCycle.LOADED)
@@ -79,7 +85,7 @@ class CloudNet_Rest_Module : DriverModule() {
         )
         dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_users (id SERIAL PRIMARY KEY, user TEXT, password TEXT)")
         dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_permission (id SERIAL PRIMARY KEY, user TEXT, permission TEXT)")
-        dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_auths (id SERIAL PRIMARY KEY, type TEXT, value TEXT, timestamp TEXT)")
+        dbm.dbexecute("CREATE TABLE IF NOT EXISTS cloudnet_rest_auths (id SERIAL PRIMARY KEY, type TEXT, value TEXT, timestamp TEXT, user TEXT)")
         dbm.dbexecute("DELETE FROM cloudnet_rest_auths")
         authChecker.schedule()
     }
@@ -96,7 +102,7 @@ class CloudNet_Rest_Module : DriverModule() {
         GlobalScope.launch {
             main(cloudServiceManager, shutdownHandler, serviceTaskProvider)
         }
-        println("Rest API listening on port {configuration!!.restapi_port}!")
+        println("Rest API listening on port ${configuration!!.restapi_port}!")
     }
     @ModuleTask(lifecycle = ModuleLifeCycle.STARTED)
     fun start(commandProvider: CommandProvider) {
@@ -146,20 +152,23 @@ class CloudNet_Rest_Module : DriverModule() {
             }
 
             routing {
-
                 swaggerUI(path = "swagger", swaggerFile = "openapi/swagger.yaml")
                 authenticate("auth-basic") {
                     get("/auth") {
-                        call.respond(jsonUtils.token().toString(4))
+                        call.respond(jsonUtils.token(call.principal<UserIdPrincipal>()?.name.toString()).toString(4))
                     }
                 }
+                //val token = call.request.headers["Authorization"]
+                //if (authUtil.authToken(token.toString(), "cloudnet.rest.services")) {
+                //} else {
+                //    call.response.status(HttpStatusCode.Unauthorized)
+                //}
 
                 //services
                 get("/services") {
                     val services = jsonUtils.services(cloudServiceManager)
-                    val tokens = dbm.tokens()
-                    val rToken = call.request.headers["Authorization"]
-                    if (tokens.contains(rToken)) {
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.services")) {
                         call.respondText(
                             services.toString(4)
                                 .replace("[", "")
@@ -168,16 +177,17 @@ class CloudNet_Rest_Module : DriverModule() {
                     } else {
                         call.response.status(HttpStatusCode.Unauthorized)
                     }
+
                 }
 
                 get("/services/{service}") {
                     val services = cloudServiceManager.services().map { it.name() }.toList()
                     val serv = services.contains(call.parameters["service"])
-                    val tokens = dbm.tokens()
-                    val rToken = call.request.headers["Authorization"]
-                    if (tokens.contains(rToken)) {
+
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.service")) {
                         if (serv) {
-                                call.respond(jsonUtils.service(cloudServiceManager, call.parameters["service"].toString()).toString(4))
+                            call.respond(jsonUtils.service(cloudServiceManager, call.parameters["service"].toString()).toString(4))
                         } else {
                             call.response.status(HttpStatusCode.NotFound)
                         }
@@ -188,9 +198,8 @@ class CloudNet_Rest_Module : DriverModule() {
 
                 //tasks
                 get("/tasks") {
-                    val tokens = dbm.tokens()
-                    val rToken = call.request.headers["Authorization"]
-                    if (tokens.contains(rToken)) {
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.tasks")) {
                         call.respond(jsonUtils.tasks(serviceTaskProvider).toString(4))
                     } else {
                         call.response.status(HttpStatusCode.Unauthorized)
@@ -200,9 +209,9 @@ class CloudNet_Rest_Module : DriverModule() {
                 get("/tasks/{task}") {
                     val tasks = serviceTaskProvider.serviceTasks().map { it.name() }.toList()
                     val tas = tasks.contains(call.parameters["task"])
-                    val tokens = dbm.tokens()
-                    val rToken = call.request.headers["Authorization"]
-                    if (tokens.contains(rToken)) {
+
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.task")) {
                         if (tas) {
                             call.respond(jsonUtils.task(serviceTaskProvider, call.parameters["task"].toString()))
                         } else {
@@ -212,8 +221,22 @@ class CloudNet_Rest_Module : DriverModule() {
                         call.response.status(HttpStatusCode.Unauthorized)
                     }
                 }
+                delete("/tasks/{task}") {
+                    val tasks = serviceTaskProvider.serviceTasks().map { it.name() }.toList()
+                    val tas = tasks.contains(call.parameters["task"])
 
-
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.task.delete")) {
+                        if (tas) {
+                            serviceTaskProvider.removeServiceTask(serviceTaskProvider.serviceTask(call.parameters["task"].toString())!!)
+                            call.response.status(HttpStatusCode.OK)
+                        } else {
+                            call.response.status(HttpStatusCode.NotFound)
+                        }
+                    } else {
+                        call.response.status(HttpStatusCode.Unauthorized)
+                    }
+                }
 
 
 

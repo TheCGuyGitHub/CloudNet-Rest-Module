@@ -4,7 +4,7 @@ import java.security.SecureRandom
 
 
 class AuthUtil internal constructor() {
-
+    val dbManager = DBManager()
 
     init {
 
@@ -22,6 +22,29 @@ class AuthUtil internal constructor() {
         }
 
         return token.toString()
+    }
+
+    fun authUser(user: String, permission: String) {
+
+    }
+
+    fun authToken(token: String, permission: String): Boolean {
+        return if (validToken(token)) {
+            val user = dbManager.tokenToUser(token)
+            val perms = dbManager.cmd_rest_perms(user)
+            if (perms.contains(permission) || perms.contains("*")) {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    private fun validToken(token: String): Boolean {
+        val tokens = dbManager.tokens()
+        return tokens.contains(token)
     }
 
     companion object {

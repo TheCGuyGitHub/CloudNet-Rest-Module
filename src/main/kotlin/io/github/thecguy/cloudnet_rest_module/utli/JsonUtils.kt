@@ -2,6 +2,7 @@ package io.github.thecguy.cloudnet_rest_module.utli
 
 import eu.cloudnetservice.driver.provider.ServiceTaskProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
+import io.github.thecguy.cloudnet_rest_module.config.Configuration
 import kong.unirest.core.json.JSONArray
 import kong.unirest.core.json.JSONObject
 import org.jetbrains.annotations.NotNull
@@ -153,7 +154,7 @@ class JsonUtils internal constructor() {
 
 
 
-    fun token():JSONObject {
+    fun token(user: String):JSONObject {
         val token = JSONObject()
         val ttoken = authUtil.generateToken(256)
         val date = Date(System.currentTimeMillis() + 600000)
@@ -163,7 +164,7 @@ class JsonUtils internal constructor() {
         } else {
             token.put("token", ttoken)
             token.put("expire_date", date)
-            dbManager.dbexecute("INSERT INTO cloudnet_rest_auths (type, value, timestamp) VALUES ('QUERY', '$ttoken', '$date')")
+            dbManager.dbexecute("INSERT INTO cloudnet_rest_auths (type, value, timestamp, user) VALUES ('QUERY', '$ttoken', '$date', '$user')")
         }
         println(dbManager.tokensDate())
         return token

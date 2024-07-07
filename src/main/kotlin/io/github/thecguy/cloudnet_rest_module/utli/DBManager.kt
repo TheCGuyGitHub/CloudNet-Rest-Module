@@ -101,6 +101,20 @@ class DBManager internal constructor() {
         return exprList
     }
 
+    fun tokenToUser(token: String): String {
+        var user = ""
+        ds.connection.use { connection ->
+            connection.prepareStatement("SELECT user FROM cloudnet_rest_auths WHERE value = '$token'").use { statement ->
+                statement.executeQuery().use { resultSet ->
+                    if (resultSet.next()) {
+                        user = resultSet.getString("user").toString()
+                    }
+                }
+            }
+        }
+        return user
+    }
+
 
 
     fun cmd_rest_users(): List<String> {
