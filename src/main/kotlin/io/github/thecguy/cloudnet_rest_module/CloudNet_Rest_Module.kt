@@ -13,6 +13,7 @@ import eu.cloudnetservice.driver.module.driver.DriverModule
 import eu.cloudnetservice.node.ShutdownHandler
 import eu.cloudnetservice.node.command.CommandProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
+import eu.cloudnetservice.driver.provider.ServiceTaskProvider
 import io.github.thecguy.cloudnet_rest_module.commands.rest
 import io.github.thecguy.cloudnet_rest_module.config.Configuration
 import io.github.thecguy.cloudnet_rest_module.coroutines.AuthChecker
@@ -85,13 +86,14 @@ class CloudNet_Rest_Module : DriverModule() {
     fun started(
         @NotNull cloudServiceManager: CloudServiceManager,
         @NotNull shutdownHandler: ShutdownHandler,
+        @NotNull serviceTaskProvider: ServiceTaskProvider,
         @NotNull @Named("module") injectionLayer: InjectionLayer<*>
     ) {
 
 
         I18n.loadFromLangPath(CloudNet_Rest_Module::class.java)
         GlobalScope.launch {
-            main(cloudServiceManager, shutdownHandler)
+            main(cloudServiceManager, shutdownHandler, serviceTaskProvider)
         }
         println("Rest API listening on port {configuration!!.restapi_port}!")
     }
@@ -108,7 +110,8 @@ class CloudNet_Rest_Module : DriverModule() {
 
     private fun main(
         @NotNull cloudServiceManager: CloudServiceManager,
-        @NotNull shutdownHandler: ShutdownHandler
+        @NotNull shutdownHandler: ShutdownHandler,
+        @NotNull serviceTaskProvider: ServiceTaskProvider
     ) {
         val port = configuration!!.restapi_port
         embeddedServer(Netty, port = port) {
@@ -150,7 +153,7 @@ class CloudNet_Rest_Module : DriverModule() {
                     }
                 }
 
-
+                //services
                 get("/services") {
                     val services = jsonUtils.services(cloudServiceManager)
                     val tokens = dbm.tokens()
@@ -173,10 +176,7 @@ class CloudNet_Rest_Module : DriverModule() {
                     val rToken = call.request.headers["Authorization"]
                     if (tokens.contains(rToken)) {
                         if (serv) {
-                            val servout = cloudServiceManager.serviceByName(call.parameters["service"].toString())
-                            if (servout != null) {
-                                call.respondText("Service: ${servout.name()} \n ServiceID: ${servout.serviceId()} \n Address: ${servout.address()} \n Connected: ${servout.connected()} \n ConnectedTime: ${servout.connectedTime()} \n CreationTime: ${servout.creationTime()} \n LifeCycle: ${servout.lifeCycle()} \n Provider: ${servout.provider()}")
-                            }
+                                call.respond(jsonUtils.service(cloudServiceManager, call.parameters["service"].toString()).toString(4))
                         } else {
                             call.respondText("Du Mensch, es gibt diesen Service NICHT! Wasn vollidiot!")
                         }
@@ -184,6 +184,21 @@ class CloudNet_Rest_Module : DriverModule() {
                         call.response.status(HttpStatusCode.Unauthorized)
                     }
                 }
+
+                //tasks
+                get("/tasks") {
+                    val tokens = dbm.tokens()
+                    val rToken = call.request.headers["Authorization"]
+                    if (tokens.contains(rToken)) {
+                        call.respond(jsonUtils.tasks(serviceTaskProvider).toString(4))
+                    } else {
+                        call.response.status(HttpStatusCode.Unauthorized)
+                    }
+                }
+
+
+
+
 
                 get("/node/shutdown") {
                     call.respondText("NOTE: The Cloud is shutting down!")
