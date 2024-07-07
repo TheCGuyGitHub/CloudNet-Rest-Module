@@ -42,24 +42,24 @@ class JsonUtils internal constructor() {
         val serv = JSONObject()
         if (ser != null) {
             serv.put("name", ser.name())
-            println("1")
+
             val addressObject = JSONObject()
             addressObject.put("host", ser.address().host)
             addressObject.put("port", ser.address().port)
             serv.put("address", addressObject)
-            println("2")
+
             serv.put("connected", ser.connected())
             serv.put("connectedTime", ser.connectedTime())
             serv.put("lifeCycle", ser.lifeCycle())
             serv.put("creationTime", ser.creationTime())
-            println("3")
+
             val configuration = JSONObject()
             configuration.put("staticService", ser.configuration().staticService())
             configuration.put("autoDeleteOnStop", ser.configuration().autoDeleteOnStop())
             configuration.put("groups", ser.configuration().groups())
             configuration.put("runtime", ser.configuration().runtime())
             serv.put("configuration", configuration)
-            println("4")
+
             val processConfig = JSONObject()
             processConfig.put("jvmOptions", ser.configuration().processConfig().jvmOptions)
             processConfig.put("environment", ser.configuration().processConfig().environment)
@@ -67,7 +67,7 @@ class JsonUtils internal constructor() {
             processConfig.put("processParameters", ser.configuration().processConfig().processParameters)
             processConfig.put("environmentVariables", ser.configuration().processConfig().environmentVariables)
             serv.put("processConfig", processConfig)
-            println("5")
+
             val processSnapshot = JSONObject()
             processSnapshot.put("pid", ser.processSnapshot().pid)
             processSnapshot.put("threads", ser.processSnapshot().threads)
@@ -79,10 +79,8 @@ class JsonUtils internal constructor() {
             processSnapshot.put("systemCpuUsage", ser.processSnapshot().systemCpuUsage)
             processSnapshot.put("unloadedClassCount", ser.processSnapshot().unloadedClassCount)
             serv.put("processSnapshot", processSnapshot)
-            println("6")
+
         }
-        println("7")
-        println(serv.toString(4))
 
         return serv
     }
@@ -121,6 +119,37 @@ class JsonUtils internal constructor() {
         result.put("tasks", tasksArray)
         return result
     }
+
+    fun task(taskProvider: ServiceTaskProvider, vTask: String): JSONObject {
+        val task = taskProvider.serviceTask(vTask)
+        val jTask = JSONObject()
+        if (task != null) {
+            jTask.put("name", task.name())
+            jTask.put("groups", task.groups())
+            jTask.put("runtime", task.runtime())
+            jTask.put("startPort", task.startPort())
+            jTask.put("associatedNodes", task.associatedNodes())
+            jTask.put("autoDeleteOnStop", task.autoDeleteOnStop())
+            jTask.put("hostAddress", task.hostAddress())
+            jTask.put("javaCommand", task.javaCommand())
+            jTask.put("maintenance", task.maintenance())
+            jTask.put("minServiceCount", task.minServiceCount())
+            jTask.put("nameSplitter", task.nameSplitter())
+            jTask.put("staticServices", task.staticServices())
+
+            val processConfiguration = JSONObject()
+            processConfiguration.put("environment", task.processConfiguration().environment)
+            processConfiguration.put("jvmOptions", task.processConfiguration().jvmOptions)
+            processConfiguration.put("processParameters", task.processConfiguration().processParameters)
+            processConfiguration.put("maxHeapMemorySize", task.processConfiguration().maxHeapMemorySize)
+            processConfiguration.put("environmentVariables", task.processConfiguration().environmentVariables)
+            jTask.put("processConfiguration", processConfiguration)
+        }
+
+        return jTask
+    }
+
+
 
 
 

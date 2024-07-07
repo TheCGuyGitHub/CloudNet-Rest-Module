@@ -24,6 +24,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.swagger.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import jakarta.inject.Named
@@ -146,7 +147,7 @@ class CloudNet_Rest_Module : DriverModule() {
 
             routing {
 
-                //swaggerUI(path = "swagger", swaggerFile = "openapi/swagger.yaml")
+                swaggerUI(path = "swagger", swaggerFile = "openapi/swagger.yaml")
                 authenticate("auth-basic") {
                     get("/auth") {
                         call.respond(jsonUtils.token().toString(4))
@@ -178,7 +179,7 @@ class CloudNet_Rest_Module : DriverModule() {
                         if (serv) {
                                 call.respond(jsonUtils.service(cloudServiceManager, call.parameters["service"].toString()).toString(4))
                         } else {
-                            call.respondText("Du Mensch, es gibt diesen Service NICHT! Wasn vollidiot!")
+                            call.response.status(HttpStatusCode.NotFound)
                         }
                     } else {
                         call.response.status(HttpStatusCode.Unauthorized)
@@ -191,6 +192,22 @@ class CloudNet_Rest_Module : DriverModule() {
                     val rToken = call.request.headers["Authorization"]
                     if (tokens.contains(rToken)) {
                         call.respond(jsonUtils.tasks(serviceTaskProvider).toString(4))
+                    } else {
+                        call.response.status(HttpStatusCode.Unauthorized)
+                    }
+                }
+
+                get("/tasks/{task}") {
+                    val tasks = serviceTaskProvider.serviceTasks().map { it.name() }.toList()
+                    val tas = tasks.contains(call.parameters["task"])
+                    val tokens = dbm.tokens()
+                    val rToken = call.request.headers["Authorization"]
+                    if (tokens.contains(rToken)) {
+                        if (tas) {
+                            call.respond(jsonUtils.task(serviceTaskProvider, call.parameters["task"].toString()))
+                        } else {
+                            call.response.status(HttpStatusCode.NotFound)
+                        }
                     } else {
                         call.response.status(HttpStatusCode.Unauthorized)
                     }
