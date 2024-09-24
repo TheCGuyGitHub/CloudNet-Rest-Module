@@ -31,7 +31,7 @@ jobs:
         run: ./gradlew shadowJar
 
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: CloudNet-Rest-Module
           path: build/libs/CloudNet-Rest-Module-1.0-SNAPSHOT-all.jar
