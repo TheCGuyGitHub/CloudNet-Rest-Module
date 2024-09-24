@@ -1,11 +1,10 @@
 package io.github.thecguy.cloudnet_rest_module.commands
 
-import cloud.commandframework.annotations.Argument
-import cloud.commandframework.annotations.CommandMethod
-import cloud.commandframework.annotations.CommandPermission
-import cloud.commandframework.annotations.parsers.Parser
-import cloud.commandframework.annotations.suggestions.Suggestions
-import cloud.commandframework.context.CommandContext
+import org.incendo.cloud.annotations.Argument
+import org.incendo.cloud.annotations.parser.Parser
+import org.incendo.cloud.annotations.suggestion.Suggestions
+import org.incendo.cloud.context.CommandContext
+import org.incendo.cloud.annotations.Permission
 
 import eu.cloudnetservice.common.language.I18n
 import eu.cloudnetservice.driver.inject.InjectionLayer
@@ -17,6 +16,7 @@ import eu.cloudnetservice.node.command.source.CommandSource
 import io.github.thecguy.cloudnet_rest_module.utli.DBManager
 
 import jakarta.inject.Singleton
+import org.incendo.cloud.annotations.Command
 
 import org.jetbrains.annotations.NotNull
 
@@ -24,7 +24,7 @@ import java.util.*
 
 
 @Singleton
-@CommandPermission("thecguy.test")
+@Permission("thecguy.rest")
 @Description("test")
 class rest {
     private val dbManager = DBManager()
@@ -41,14 +41,14 @@ class rest {
         return taskProvider.serviceTasks().toList()
     }
 
-    @CommandMethod("rest users")
+    @Command("rest users")
     fun users(
         source: CommandSource,
     ) {
         source.sendMessage(I18n.trans("module-rest-command-users"))
         source.sendMessage(dbManager.cmd_rest_users())
     }
-    @CommandMethod("rest user create <username> <password>")
+    @Command("rest user create <username> <password>")
     fun createUser(
         source: CommandSource,
         @NotNull @Argument("username") username: String,
@@ -63,7 +63,7 @@ class rest {
             source.sendMessage(I18n.trans("module-rest-command-createduser"))
         }
     }
-    @CommandMethod("rest user delete <username>")
+    @Command("rest user delete <username>")
     fun deleteUser(
         source: CommandSource,
         @NotNull @Argument("username") username: String
@@ -76,7 +76,7 @@ class rest {
             source.sendMessage(I18n.trans("module-rest-command-usernotexist"))
         }
     }
-    @CommandMethod("rest user user <username> add permission <permission>")
+    @Command("rest user user <username> add permission <permission>")
     fun addPermsToUser(
         source: CommandSource,
         @NotNull @Argument("username") username: String,
@@ -95,7 +95,7 @@ class rest {
             source.sendMessage(I18n.trans("module-rest-command-usernotexist"))
         }
     }
-    @CommandMethod("rest user user <username> remove permission <permission>")
+    @Command("rest user user <username> remove permission <permission>")
     fun remPerms(
         source: CommandSource,
         @NotNull @Argument("username") username: String,
@@ -114,4 +114,5 @@ class rest {
             source.sendMessage(I18n.trans("module-rest-command-usernotexist"))
         }
     }
+
 }

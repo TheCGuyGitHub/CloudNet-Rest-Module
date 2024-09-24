@@ -1,8 +1,8 @@
 package io.github.thecguy.cloudnet_rest_module.utli
 
+import eu.cloudnetservice.driver.cluster.NodeInfoSnapshot
 import eu.cloudnetservice.driver.provider.ServiceTaskProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
-import io.github.thecguy.cloudnet_rest_module.config.Configuration
 import kong.unirest.core.json.JSONArray
 import kong.unirest.core.json.JSONObject
 import org.jetbrains.annotations.NotNull
@@ -150,8 +150,38 @@ class JsonUtils internal constructor() {
         return jTask
     }
 
+    fun nodeInfo(nodeInfoSnapshot: NodeInfoSnapshot): JSONObject {
+        val nodeInfo = JSONObject()
 
+        val nNode = JSONObject()
+        nNode.put("listeners", nodeInfoSnapshot.node().listeners())
+        nNode.put("uniqueId", nodeInfoSnapshot.node().uniqueId())
+        nodeInfo.put("node", nNode)
 
+        nodeInfo.put("modules", nodeInfoSnapshot.modules())
+        nodeInfo.put("creationTime", nodeInfoSnapshot.creationTime())
+        nodeInfo.put("version", nodeInfoSnapshot.version())
+        nodeInfo.put("currentServicesCount", nodeInfoSnapshot.currentServicesCount())
+        nodeInfo.put("draining", nodeInfoSnapshot.draining())
+        nodeInfo.put("maxMemory", nodeInfoSnapshot.maxMemory())
+        nodeInfo.put("maxProcessorUsageToStartServices", nodeInfoSnapshot.maxProcessorUsageToStartServices())
+        nodeInfo.put("reservedMemory", nodeInfoSnapshot.reservedMemory())
+        nodeInfo.put("startupMillis", nodeInfoSnapshot.startupMillis())
+        nodeInfo.put("usedMemory", nodeInfoSnapshot.usedMemory())
+        val processSnapshot = JSONObject()
+        processSnapshot.put("pid", nodeInfoSnapshot.processSnapshot().pid)
+        processSnapshot.put("threads", nodeInfoSnapshot.processSnapshot().threads)
+        processSnapshot.put("cpuUsage", nodeInfoSnapshot.processSnapshot().cpuUsage)
+        processSnapshot.put("maxHeapMemory", nodeInfoSnapshot.processSnapshot().maxHeapMemory)
+        processSnapshot.put("systemCpuUsage", nodeInfoSnapshot.processSnapshot().systemCpuUsage)
+        processSnapshot.put("heapUsageMemory", nodeInfoSnapshot.processSnapshot().heapUsageMemory)
+        processSnapshot.put("currentLoadedClassCount", nodeInfoSnapshot.processSnapshot().currentLoadedClassCount)
+        processSnapshot.put("totalLoadedClassCount", nodeInfoSnapshot.processSnapshot().totalLoadedClassCount)
+        processSnapshot.put("unloadedClassCount", nodeInfoSnapshot.processSnapshot().unloadedClassCount)
+        nodeInfo.put("processSnapshot", processSnapshot)
+
+        return nodeInfo
+    }
 
 
     fun token(user: String):JSONObject {

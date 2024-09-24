@@ -1,18 +1,23 @@
 package io.github.thecguy.cloudnet_rest_module.utli
 
+
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.security.SecureRandom
 
 
 class AuthUtil internal constructor() {
-    val dbManager = DBManager()
+    private val dbManager = DBManager()
+    private val Logger: Logger = LoggerFactory.getLogger(AuthUtil::class.java)
+
 
     init {
-
+        println("init success!")
     }
 
 
     fun generateToken(length: Int): String {
-        val characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/*-+-_!"
+        val characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/*-_!"
         val random = SecureRandom()
         val token = StringBuilder(length)
 
@@ -29,6 +34,7 @@ class AuthUtil internal constructor() {
     }
 
     fun authToken(token: String, permission: String): Boolean {
+        Logger.info(token)
         return if (validToken(token)) {
             val user = dbManager.tokenToUser(token)
             val perms = dbManager.cmd_rest_perms(user)
@@ -42,8 +48,9 @@ class AuthUtil internal constructor() {
         }
     }
 
-    private fun validToken(token: String): Boolean {
+    fun validToken(token: String): Boolean {
         val tokens = dbManager.tokens()
+        Logger.info(tokens.toString())
         return tokens.contains(token)
     }
 

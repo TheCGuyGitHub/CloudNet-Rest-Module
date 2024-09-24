@@ -26,8 +26,8 @@ dependencies {
     compileOnly("eu.cloudnetservice.cloudnet:node:4.0.0-RC10")
     compileOnly("eu.cloudnetservice.cloudnet:bridge:4.0.0-RC10")
 
-    compileOnly("com.github.cloudnetservice.cloud-command-framework:cloud-core:1.9.0-cn1")
-    compileOnly("com.github.cloudnetservice.cloud-command-framework:cloud-annotations:1.9.0-cn1")
+    compileOnly("com.github.cloudnetservice.cloud-command-framework:cloud-core:2.0.0-cn1")
+    compileOnly("com.github.cloudnetservice.cloud-command-framework:cloud-annotations:2.0.0-cn1")
 
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
     implementation("io.ktor:ktor-server-core:$ktor_version")
@@ -36,6 +36,8 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
     implementation("io.ktor:ktor-server-auth:$ktor_version")
     implementation("io.ktor:ktor-server-auth-jwt:$ktor_version")
+    implementation("io.ktor:ktor-server-websockets:$ktor_version")
+    implementation("io.ktor:ktor-server-cors:$ktor_version")
 
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.0")
 

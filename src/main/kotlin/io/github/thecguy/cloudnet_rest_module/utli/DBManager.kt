@@ -13,12 +13,10 @@ class DBManager internal constructor() {
 
 
     init {
-        val hikariLogger = LoggerFactory.getLogger("com.zaxxer.hikari") as ch.qos.logback.classic.Logger
-        hikariLogger.level = Level.DEBUG
-
         val config = HikariConfig()
 
-        val host = "127.0.0.1"
+
+        val host = "192.168.0.204"
         val port = 3306
         val database = "cloudnet_rest"
         val username = "cloudnet"
