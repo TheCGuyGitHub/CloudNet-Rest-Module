@@ -20,6 +20,7 @@ import eu.cloudnetservice.node.command.CommandProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
 import eu.cloudnetservice.node.service.ServiceConsoleLineHandler
 import eu.cloudnetservice.node.service.ServiceConsoleLogCache
+import eu.cloudnetservice.modules.bridge.player.PlayerManager
 import io.github.thecguy.cloudnet_rest_module.commands.rest
 import io.github.thecguy.cloudnet_rest_module.config.Configuration
 import io.github.thecguy.cloudnet_rest_module.coroutines.AuthChecker
@@ -115,13 +116,14 @@ class CloudNet_Rest_Module : DriverModule() {
         @NotNull shutdownHandler: ShutdownHandler,
         @NotNull serviceTaskProvider: ServiceTaskProvider,
         @NotNull nodeServerProvider: NodeServerProvider,
+        @NotNull playerManager: PlayerManager,
         @NotNull @Named("module") injectionLayer: InjectionLayer<*>
     ) {
 
 
         I18n.loadFromLangPath(CloudNet_Rest_Module::class.java)
         GlobalScope.launch {
-            main(cloudServiceManager, shutdownHandler, serviceTaskProvider, nodeServerProvider)
+            main(cloudServiceManager, shutdownHandler, serviceTaskProvider, nodeServerProvider, playerManager)
         }
         Logger.info("RestAPI listening on port ${configuration!!.restapi_port}")
     }
@@ -157,7 +159,8 @@ class CloudNet_Rest_Module : DriverModule() {
         @NotNull cloudServiceManager: CloudServiceManager,
         @NotNull shutdownHandler: ShutdownHandler,
         @NotNull serviceTaskProvider: ServiceTaskProvider,
-        @NotNull nodeServerProvider: NodeServerProvider
+        @NotNull nodeServerProvider: NodeServerProvider,
+        @NotNull playerManager: PlayerManager
     ) {
         val port = configuration!!.restapi_port
         embeddedServer(Netty, port = port, host = "0.0.0.0") {
@@ -254,7 +257,7 @@ class CloudNet_Rest_Module : DriverModule() {
                     }
                 }
 
-                // ____   _____  ____   _____
+                //  ____   _____  ____   _____
                 // |  _ \ | ____|/ ___| |_   _|
                 // | |_) ||  _|  \___ \   | |
                 // |  _ < | |___  ___) |  | |
@@ -275,7 +278,7 @@ class CloudNet_Rest_Module : DriverModule() {
                     }
                 }
 
-                //  _   _   ___   ____   _____
+                //   _   _   ___   ____   _____
                 //  | \ | | / _ \ |  _ \ | ____|
                 //  |  \| || | | || | | ||  _|
                 //  | |\  || |_| || |_| || |___
@@ -298,13 +301,56 @@ class CloudNet_Rest_Module : DriverModule() {
                     }
                 }
 
-                //  ____  _      _   _  ____   _____  _____  ____
+                //   ____  _      _   _  ____   _____  _____  ____
                 //  / ___|| |    | | | |/ ___| |_   _|| ____||  _ \
                 //  | |    | |    | | | |\___ \   | |  |  _|  | |_) |
                 //  | |___ | |___ | |_| | ___) |  | |  | |___ |  _ <
                 //  \____||_____| \___/ |____/   |_|  |_____||_| \_\
 
-                
+                get("api/v1/cluster") {
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.players.online")) {
+                        call.respondText(jsonUtils.nodes(nodeServerProvider).toString(4))
+                    } else {
+                        call.response.status(HttpStatusCode.Unauthorized)
+                    }
+                }
+
+
+                // ____   _
+                // |  _ \ | |  __ _  _   _   ___  _ __
+                // | |_) || | / _` || | | | / _ \| '__|
+                // |  __/ | || (_| || |_| ||  __/| |
+                // |_|    |_| \__,_| \__, | \___||_|
+                //                   |___/
+
+                get("api/v1/players/onlineCount") {
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.players.online")) {
+                        val json = JSONObject()
+                        json.append("onlineCount", playerManager.onlineCount())
+                        call.respond(json.toString(4)
+                            .replace("[", "")
+                            .replace("]", "")
+                        )
+                    } else {
+                        call.response.status(HttpStatusCode.Unauthorized)
+                    }
+                }
+
+                get("api/v1/players/registeredCount") {
+                    val token = call.request.headers["Authorization"]
+                    if (authUtil.authToken(token.toString(), "cloudnet.rest.players.registered")) {
+                        val json = JSONObject()
+                        json.append("registeredCount", playerManager.registeredCount())
+                        call.respond(json.toString(4)
+                            .replace("[", "")
+                            .replace("]", "")
+                        )
+                    } else {
+                        call.response.status(HttpStatusCode.Unauthorized)
+                    }
+                }
 
 
 
@@ -314,21 +360,34 @@ class CloudNet_Rest_Module : DriverModule() {
 
 
 
-                //val token = call.request.headers["Authorization"]
+
+                    //val token = call.request.headers["Authorization"]
                 //if (authUtil.authToken(token.toString(), "cloudnet.rest.services")) {
                 //} else {
                 //    call.response.status(HttpStatusCode.Unauthorized)
                 //}
 
-                //services
+
+                //  ____                      _
+                // / ___|   ___  _ __ __   __(_)  ___   ___  ___
+                // \___ \  / _ \| '__|\ \ / /| | / __| / _ \/ __|
+                //  ___) ||  __/| |    \ V / | || (__ |  __/\__ \
+                // |____/  \___||_|     \_/  |_| \___| \___||___/
+
+
+
                 get("api/v1/services") {
                     val services = jsonUtils.services(cloudServiceManager)
                     val token = call.request.headers["Authorization"]
                     if (authUtil.authToken(token.toString(), "cloudnet.rest.services")) {
+                        val test = JSONObject()
+                        test.append("services", cloudServiceManager.services())
+                        //call.respondText(test.toString(4))
+
                         call.respondText(
                             services.toString(4)
-                                .replace("[", "")
-                                .replace("]", "")
+                                //.replace("[", "")
+                                //.replace("]", "")
                         )
                     } else {
                         call.response.status(HttpStatusCode.Unauthorized)
@@ -418,9 +477,6 @@ class CloudNet_Rest_Module : DriverModule() {
                         }
                     }
                 }
-
-
-
 
 
 

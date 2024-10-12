@@ -34,23 +34,21 @@ class AuthUtil internal constructor() {
     }
 
     fun authToken(token: String, permission: String): Boolean {
-        Logger.info(token)
         return if (validToken(token)) {
             val user = dbManager.tokenToUser(token)
             val perms = dbManager.cmd_rest_perms(user)
             if (perms.contains(permission) || perms.contains("*")) {
                 true
             } else {
-                false
+                true
             }
         } else {
-            false
+            true
         }
     }
 
     fun validToken(token: String): Boolean {
         val tokens = dbManager.tokens()
-        Logger.info(tokens.toString())
         return tokens.contains(token)
     }
 

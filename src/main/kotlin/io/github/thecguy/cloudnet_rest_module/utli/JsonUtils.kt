@@ -2,6 +2,8 @@ package io.github.thecguy.cloudnet_rest_module.utli
 
 import eu.cloudnetservice.driver.cluster.NodeInfoSnapshot
 import eu.cloudnetservice.driver.provider.ServiceTaskProvider
+import eu.cloudnetservice.node.cluster.LocalNodeServer
+import eu.cloudnetservice.node.cluster.NodeServerProvider
 import eu.cloudnetservice.node.service.CloudServiceManager
 import kong.unirest.core.json.JSONArray
 import kong.unirest.core.json.JSONObject
@@ -17,21 +19,39 @@ class JsonUtils internal constructor() {
 
     }
 
+
      fun services(cloudServiceManager: CloudServiceManager): JSONObject {
         val ser = cloudServiceManager.services()
         val servicesArray = JSONArray()
         ser.forEach { service ->
             val serviceObject = JSONObject()
             serviceObject.put("Name", service.name())
+
             val addressObject = JSONObject()
             addressObject.put("host", service.address().host)
             addressObject.put("port", service.address().port)
             serviceObject.put("Address", addressObject)
+
             serviceObject.put("Connected", service.connected())
             serviceObject.put("LifeCycle", service.lifeCycle())
             serviceObject.put("CreationTime", service.creationTime())
             serviceObject.put("ConnectedTime", service.connectedTime())
+
+            val processSnapshot = JSONObject()
+            processSnapshot.put("pid", service.processSnapshot().pid)
+            processSnapshot.put("threads", service.processSnapshot().threads)
+            processSnapshot.put("cpuUsage", service.processSnapshot().cpuUsage)
+            processSnapshot.put("maxHeapMemory", service.processSnapshot().maxHeapMemory)
+            processSnapshot.put("currentLoadedClassCount", service.processSnapshot().currentLoadedClassCount)
+            processSnapshot.put("heapUsageMemory", service.processSnapshot().heapUsageMemory)
+            processSnapshot.put("noHeapUsageMemory", service.processSnapshot().noHeapUsageMemory)
+            processSnapshot.put("systemCpuUsage", service.processSnapshot().systemCpuUsage)
+            processSnapshot.put("unloadedClassCount", service.processSnapshot().unloadedClassCount)
+            serviceObject.put("processSnapshot", processSnapshot)
+
             servicesArray.put(serviceObject)
+
+
         }
         val result = JSONObject()
         result.put("services", servicesArray)
@@ -149,6 +169,69 @@ class JsonUtils internal constructor() {
 
         return jTask
     }
+
+    fun nodes(nodeServerProvider: NodeServerProvider):JSONObject {
+        val nodes = nodeServerProvider.nodeServers()
+        val nodesArray = JSONArray()
+        nodes.forEach { node ->
+            val nodeJson = JSONObject()
+            val nodeObj = JSONObject()
+            nodeObj.put("uniqueId", node.info().uniqueId())
+            nodeObj.put("listeners", node.info().listeners())
+            nodeJson.put("node", nodeObj)
+            nodeJson.put("state", node.state())
+            nodeJson.put("head", node.head())
+
+            val nodeInfoSnapshot = JSONObject()
+            if (node.nodeInfoSnapshot() != null) {
+                nodeInfoSnapshot.put("creationTime", node.nodeInfoSnapshot().creationTime())
+                nodeInfoSnapshot.put("startupMillis", node.nodeInfoSnapshot().startupMillis())
+                nodeInfoSnapshot.put("maxMemory", node.nodeInfoSnapshot().maxMemory())
+                nodeInfoSnapshot.put("usedMemory", node.nodeInfoSnapshot().usedMemory())
+                nodeInfoSnapshot.put("reservedMemory", node.nodeInfoSnapshot().reservedMemory())
+                nodeInfoSnapshot.put("currentServicesCount", node.nodeInfoSnapshot().currentServicesCount())
+                nodeInfoSnapshot.put("drain", node.nodeInfoSnapshot().draining())
+
+                val version = JSONObject()
+                version.put("major", node.nodeInfoSnapshot().version().major)
+                version.put("minor", node.nodeInfoSnapshot().version().minor)
+                version.put("patch", node.nodeInfoSnapshot().version().patch)
+                version.put("revision", node.nodeInfoSnapshot().version().revision)
+                version.put("versionType", node.nodeInfoSnapshot().version().versionType)
+                version.put("versionTitle", node.nodeInfoSnapshot().version().versionTitle)
+
+                nodeInfoSnapshot.put("version", version)
+
+                val processSnapshot = JSONObject()
+                processSnapshot.put("pid", node.nodeInfoSnapshot().processSnapshot().pid)
+                processSnapshot.put("threads", node.nodeInfoSnapshot().processSnapshot().threads)
+                processSnapshot.put("cpuUsage", node.nodeInfoSnapshot().processSnapshot().cpuUsage)
+                processSnapshot.put("maxHeapMemory", node.nodeInfoSnapshot().processSnapshot().maxHeapMemory)
+                processSnapshot.put("systemCpuUsage", node.nodeInfoSnapshot().processSnapshot().systemCpuUsage)
+                processSnapshot.put("heapUsageMemory", node.nodeInfoSnapshot().processSnapshot().heapUsageMemory)
+                processSnapshot.put("currentLoadedClassCount", node.nodeInfoSnapshot().processSnapshot().currentLoadedClassCount)
+                processSnapshot.put("totalLoadedClassCount", node.nodeInfoSnapshot().processSnapshot().totalLoadedClassCount)
+                processSnapshot.put("unloadedClassCount", node.nodeInfoSnapshot().processSnapshot().unloadedClassCount)
+
+                nodeInfoSnapshot.put("processSnapshot", processSnapshot)
+
+                nodeInfoSnapshot.put("maxCPUUsageToStartServices", node.nodeInfoSnapshot().maxProcessorUsageToStartServices())
+                nodeInfoSnapshot.put("modules", node.nodeInfoSnapshot().modules())
+            }
+
+
+            nodeJson.put("nodeInfoSnapshot", nodeInfoSnapshot)
+
+
+
+            nodesArray.put(nodeJson)
+        }
+        val result = JSONObject()
+        result.put("nodes", nodesArray)
+        return result
+    }
+
+
 
     fun nodeInfo(nodeInfoSnapshot: NodeInfoSnapshot): JSONObject {
         val nodeInfo = JSONObject()
